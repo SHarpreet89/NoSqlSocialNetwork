@@ -62,33 +62,34 @@ const thoughtController = {
     console.log(err);
     res.status(500).json(err);
   },
-  // delete thought
-  async deleteThought(req, res) {
-    try {
-      const dbThoughtData = await Thought.findOneAndRemove({ _id: req.params.thoughtId })
+// delete thought
+async deleteThought(req, res) {
+  try {
+    // Use findOneAndDelete instead of findOneAndRemove
+    const dbThoughtData = await Thought.findOneAndDelete({ _id: req.params.thoughtId });
 
-      if (!dbThoughtData) {
-        return res.status(404).json({ message: 'No thought with this id!' });
-      }
-
-      // remove thought id from user's `thoughts` field
-      const dbUserData = User.findOneAndUpdate(
-        { thoughts: req.params.thoughtId },
-        { $pull: { thoughts: req.params.thoughtId } },
-        { new: true }
-      );
-
-      if (!dbUserData) {
-        return res.status(404).json({ message: 'Thought created but no user with this id!' });
-      }
-
-      res.json({ message: 'Thought successfully deleted!' });
-    } catch (err) {
-      console.log(err);
-      res.status(500).json(err);
+    if (!dbThoughtData) {
+      return res.status(404).json({ message: 'No thought with this id!' });
     }
-  },
 
+    // Remove thought id from user's `thoughts` field
+    const dbUserData = await User.findOneAndUpdate(
+      { thoughts: req.params.thoughtId },  // Find the user that has this thought in the `thoughts` array
+      { $pull: { thoughts: req.params.thoughtId } },  // Remove the thought from the array
+      { new: true }  // Return the updated document
+    );
+
+    if (!dbUserData) {
+      return res.status(404).json({ message: 'Thought deleted but no user with this thought!' });
+    }
+
+    // If everything succeeds, return a success message
+    res.json({ message: 'Thought successfully deleted!' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'An error occurred', error: err.message });
+  }
+},
   // add a reaction to a thought
   async addReaction(req, res) {
     try {
